@@ -1,0 +1,44 @@
+# Build directories
+build/
+stm32_uart_test/build/
+
+# Object files
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+*.d
+*.lst
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Backup files
+*.bak
+*.old
+
+# Log files
+*.log
+
+# STM32 generated files
+stm32_uart_test/.mxproject
+stm32_uart_test/.cproject
+stm32_uart_test/.project
+stm32_uart_test/.settings/
+
+# Temporary files
+*.tmp
+*.temp
