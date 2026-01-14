@@ -153,15 +153,18 @@ int main(void)
       {
         rx_buffer[rx_index] = '\0';
         printf("[UART RX] %s\r\n", rx_buffer);
+        
+        /* Send acknowledgment with complete message */
+        char ack_buffer[120];
+        sprintf(ack_buffer, "STM32 ACK: %s\r\n", rx_buffer);
+        HAL_UART_Transmit(&huart2, (uint8_t*)ack_buffer, strlen(ack_buffer), HAL_MAX_DELAY);
+        
         rx_index = 0;
       }
       else if (rx_byte != '\r')
       {
         rx_buffer[rx_index++] = rx_byte;
       }
-      
-      /* Echo the received byte back */
-      HAL_UART_Transmit(&huart2, &rx_byte, 1, HAL_MAX_DELAY);
     }
     
     /* Send counter via USART2 every second */
