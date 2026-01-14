@@ -50,6 +50,8 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 uint32_t counter = 0;
 char uart_buffer[50];
+char rx_buffer[100];
+uint8_t rx_byte;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -138,6 +140,16 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    /* Check for incoming data on UART */
+    if (HAL_UART_Receive(&huart2, &rx_byte, 1, 10) == HAL_OK)
+    {
+      /* Data received - toggle YELLOW LED */
+      BSP_LED_Toggle(LED_YELLOW);
+      
+      /* Echo the received byte back */
+      HAL_UART_Transmit(&huart2, &rx_byte, 1, HAL_MAX_DELAY);
+    }
+    
     /* Send counter via USART2 every second */
     sprintf(uart_buffer, "Counter: %lu\r\n", counter);
     HAL_UART_Transmit(&huart2, (uint8_t*)uart_buffer, strlen(uart_buffer), HAL_MAX_DELAY);
