@@ -53,6 +53,7 @@ char uart_buffer[50];
 char rx_buffer[100];
 uint8_t rx_byte;
 uint16_t rx_index = 0;
+uint32_t last_send_time = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -164,14 +165,17 @@ int main(void)
     }
     
     /* Send counter via USART2 every second */
-    sprintf(uart_buffer, "Counter: %lu\r\n", counter);
-    HAL_UART_Transmit(&huart2, (uint8_t*)uart_buffer, strlen(uart_buffer), HAL_MAX_DELAY);
-    
-    /* Toggle LED to indicate transmission */
-    BSP_LED_Toggle(LED_GREEN);
-    
-    counter++;
-    HAL_Delay(1000);
+    if (HAL_GetTick() - last_send_time >= 1000)
+    {
+      sprintf(uart_buffer, "Counter: %lu\r\n", counter);
+      HAL_UART_Transmit(&huart2, (uint8_t*)uart_buffer, strlen(uart_buffer), HAL_MAX_DELAY);
+      
+      /* Toggle LED to indicate transmission */
+      BSP_LED_Toggle(LED_GREEN);
+      
+      counter++;
+      last_send_time = HAL_GetTick();
+    }
 
     /* -- Sample board code for User push-button in interrupt mode ---- */
     if (BspButtonState == BUTTON_PRESSED)
