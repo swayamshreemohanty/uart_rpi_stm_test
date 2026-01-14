@@ -9,14 +9,17 @@ This project tests bidirectional UART communication between a Raspberry Pi 4 and
 
 Connect the devices:
 ```
-RPi 4 (GPIO)         STM32 Nucleo (USART3)
+RPi 4 (GPIO)         STM32 Nucleo (USART2)
 ───────────          ─────────────────────
-GPIO 14 (TX) ──────→ PD9 (RX)
-GPIO 15 (RX) ←────── PD8 (TX)
+GPIO 14 (TX) ──────→ PA3 (RX)
+GPIO 15 (RX) ←────── PA2 (TX)
 GND          ──────── GND
 ```
 
-**Important:** Do NOT connect 5V or 3.3V power between boards if both are powered separately.
+**Important:** 
+- Do NOT connect 5V or 3.3V power between boards if both are powered separately
+- Ensure TX → RX and RX → TX cross-connection
+- STM32 uses USART2 on pins PA2 (TX) and PA3 (RX)
 
 ### STM32 Setup
 
@@ -63,24 +66,71 @@ python3 rpi_uart_test.py
 
 ### Expected Behavior
 
-**On Raspberry Pi:**
+**On Raspberry Pi (using Python script):**
 ```
 UART opened on /dev/serial0 at 115200 baud
+Listening for incoming UART data...
 Press Ctrl+C to exit
 --------------------------------------------------
-Sent: RPi->STM32: 0
-Received: STM32->RPi: ACK [RPi->STM32: 0]
-Received: STM32 Heartbeat: 0
-Sent: RPi->STM32: 1
-Received: STM32->RPi: ACK [RPi->STM32: 1]
-Received: STM32 Heartbeat: 1
+Received: Counter: 0
+Received: Counter: 1
+Received: Counter: 2
 ```
 
+**On Raspberry Pi (using command line):**
+```bash
+$ stty -F /dev/serial0 115200 raw -echo && cat /dev/serial0
+Counter: 0
+Counter: 1
+Counter: 2
+...
+```
+
+**STM32 LEDs:**
+- **Green LED:** Toggles every second when sending counter data
+- **Yellow LED:** Toggles when data is received from RPi (echo back)
+
 **Communication flow:**
-- RPi sends numbered messages every second
-- STM32 echoes received messages with acknowledgment
-- STM32 sends heartbeat every 2 seconds
-- Both directions tested simultaneously
+- STM32 sends counter messages every second
+- STM32 listens for incoming data and echoes it back
+- Yellow LED confirms STM32 is receiving data
+- Green LED confirms STM32 is transmitting data
+
+### Command Line Testing (Without Python Script)
+
+**Direct UART communication test:**
+
+**1. Listen for incoming data from STM32:**
+```bash
+# Configure UART and listen
+stty -F /dev/serial0 115200 raw -echo && cat /dev/serial0
+
+# You should see:
+# Counter: 0
+# Counter: 1
+# Counter: 2
+# ...
+```
+
+**2. Send data to STM32:**
+```bash
+# Send test data (Yellow LED on STM32 will blink)
+echo "test" > /dev/serial0
+
+# Send multiple bytes
+echo "Hello STM32" > /dev/serial0
+```
+
+**3. Test with hexdump (see raw bytes):**
+```bash
+# View incoming data in hex format
+stty -F /dev/serial0 115200 raw && hexdump -C /dev/serial0
+```
+
+**4. Check current UART settings:**
+```bash
+stty -F /dev/serial0
+```
 
 ### Troubleshooting
 
@@ -89,8 +139,16 @@ Received: STM32 Heartbeat: 1
 # Check UART availability
 ls -l /dev/serial*
 
+# Verify UART is enabled in config
+cat /boot/firmware/config.txt | grep uart
+# Should show: enable_uart=1
+
+# Check user permissions
+groups
+# Should include 'dialout'
+
 # Verify Bluetooth not using UART (RPi 3/4)
-# Add to /boot/config.txt:
+# Add to /boot/config.txt or /boot/firmware/config.txt:
 dtoverlay=disable-bt
 
 # Disable Bluetooth service
