@@ -1,260 +1,125 @@
-# UART Bidirectional Communication Tester
+# UART Bidirectional Communication Test
 ## Raspberry Pi 4 ↔ STM32 Nucleo H7A3ZI-Q
 
-This project tests bidirectional UART communication between a Raspberry Pi 4 and STM32 Nucleo H7A3ZI-Q board.
+Simple test for bidirectional UART communication between Raspberry Pi 4 and STM32 Nucleo H7A3ZI-Q board.
 
-## Quick Start
+## Hardware Connections
 
-### Hardware Setup
-
-Connect the devices:
+Connect these 3 wires:
 ```
-RPi 4 (GPIO)         STM32 Nucleo (USART2)
-───────────          ─────────────────────
-GPIO 14 (TX) ──────→ PA3 (RX)
-GPIO 15 (RX) ←────── PA2 (TX)
-GND          ──────── GND
+Raspberry Pi 4       STM32 Nucleo
+──────────────       ────────────
+GPIO 14 (TX)    ──►  PA3 (RX)
+GPIO 15 (RX)    ◄──  PA2 (TX)
+GND             ───  GND
 ```
 
-**Important:** 
-- Do NOT connect 5V or 3.3V power between boards if both are powered separately
-- Ensure TX → RX and RX → TX cross-connection
-- STM32 uses USART2 on pins PA2 (TX) and PA3 (RX)
+**Important:** Don't connect power (3.3V/5V) if both boards are powered separately.
 
-### STM32 Setup
+## How to Test
 
-**1. Install prerequisites:**
-```bash
-sudo apt install gcc-arm-none-eabi stlink-tools
-```
+### Step 1: Setup STM32
 
-**2. Build and flash:**
-```bash
-cd stm32_uart_test
-make clean
-make -j4
-make flash
-```
+**Using STM32CubeIDE:**
+1. Open STM32CubeIDE
+2. Import project: File → Open Projects from File System → Select `stm32_uart_test` folder
+3. Build: Right-click project → Build Project
+4. Flash: Right-click project → Run As → STM32 C/C++ Application
 
-**3. Verify flashing:**
-```bash
-make probe
-```
+### Step 2: Setup Raspberry Pi
 
-### Raspberry Pi Setup
-
-**1. Enable UART:**
+Enable UART hardware:
 ```bash
 sudo raspi-config
-# → Interface Options → Serial Port
-#   - Login shell over serial: NO
-#   - Serial port hardware enabled: YES
-sudo reboot
 ```
+- Go to: Interface Options → Serial Port
+- "Login shell over serial?" → **NO**
+- "Serial port hardware enabled?" → **YES**
+- Reboot
 
-**2. Install Python dependencies:**
+Install Python library:
 ```bash
 sudo apt install python3-serial
 ```
 
-**3. Run the test:**
+### Step 3: Run the Test
+
+On Raspberry Pi:
 ```bash
 python3 rpi_uart_test.py
 ```
 
-## Testing the Communication
+## What You Should See
 
-### Expected Behavior
-
-**On Raspberry Pi (using Python script):**
+### On Raspberry Pi Terminal:
 ```
 UART opened on /dev/serial0 at 115200 baud
-Listening for incoming UART data...
+Bidirectional UART communication with STM32...
 Press Ctrl+C to exit
 --------------------------------------------------
-Received: Counter: 0
-Received: Counter: 1
-Received: Counter: 2
+[Outgoing DATA] RPi->STM32: Message 0
+[Incoming DATA] Counter: 0
+[Incoming DATA] STM32 ACK: RPi->STM32: Message 0
+[Outgoing DATA] RPi->STM32: Message 1
+[Incoming DATA] Counter: 1
+[Incoming DATA] STM32 ACK: RPi->STM32: Message 1
 ```
 
-**On Raspberry Pi (using command line):**
-```bash
-$ stty -F /dev/serial0 115200 raw -echo && cat /dev/serial0
-Counter: 0
-Counter: 1
-Counter: 2
-...
-```
+### On STM32 Board:
+- **Green LED:** Blinks every second (sending counter)
+- **Yellow LED:** Blinks when receiving messages from RPi
 
-**STM32 LEDs:**
-- **Green LED:** Toggles every second when sending counter data
-- **Yellow LED:** Toggles when data is received from RPi (echo back)
+## What's Happening
 
-**Communication flow:**
-- STM32 sends counter messages every second
-- STM32 listens for incoming data and echoes it back
-- Yellow LED confirms STM32 is receiving data
-- Green LED confirms STM32 is transmitting data
+**STM32 → RPi:**
+- STM32 sends "Counter: X" every second
+- Green LED blinks when sending
 
-### Command Line Testing (Without Python Script)
+**RPi → STM32:**
+- RPi sends "RPi->STM32: Message X" every 2 seconds
+- STM32 receives it and replies with "STM32 ACK: ..."
+- Yellow LED blinks when receiving
+
+## Quick Troubleshooting
 
 **Direct UART communication test:**
 
-**1. Listen for incoming data from STM32:**
+**No data from STM32:**
+- Check wiring (TX→RX, RX→TX)
+- Check UART is enabled: `ls -l /dev/serial*`
+- Add to /boot/firmware/config.txt: `enable_uart=1` and reboot
+- Check wiring (TX→RX, RX→TX, GND→GND)
+- Verify STM32 is flashed and running (Green LED should blink every second)
+- Check UART is enabled on RPi: `ls -l /dev/serial*`
+- Add to /boot/firmware/config.txt: `enable_uart=1` and reboot
+
+**RPi can't send to STM32:**
+- Verify Yellow LED blinks on STM32 when sending from RPi
+- Try: `echo "test" > /dev/serial0`
+
+**Permission error on RPi:**
 ```bash
-# Configure UART and listen
+sudo usermod -a -G dialout $USER
+# Then logout and login again
+```
+
+**STM32 build/flash issues:**
+- Use STM32CubeIDE to build and flash (project was generated with STM32CubeMX)
+- Check ST-Link connection is detected in STM32CubeIDE
+Listen to STM32:
+```bash
 stty -F /dev/serial0 115200 raw -echo && cat /dev/serial0
-
-# You should see:
-# Counter: 0
-# Counter: 1
-# Counter: 2
-# ...
 ```
 
-**2. Send data to STM32:**
+Send to STM32:
 ```bash
-# Send test data (Yellow LED on STM32 will blink)
-echo "test" > /dev/serial0
-
-# Send multiple bytes
 echo "Hello STM32" > /dev/serial0
-```
-
-**3. Test with hexdump (see raw bytes):**
-```bash
-# View incoming data in hex format
-stty -F /dev/serial0 115200 raw && hexdump -C /dev/serial0
-```
-
-**4. Check current UART settings:**
-```bash
-stty -F /dev/serial0
-```
-
-### Troubleshooting
-
-**No data received on RPi:**
-```bash
-# Check UART availability
-ls -l /dev/serial*
-
-# Verify UART is enabled in config
-cat /boot/firmware/config.txt | grep uart
-# Should show: enable_uart=1
-
-# Check user permissions
-groups
-# Should include 'dialout'
-
-# Verify Bluetooth not using UART (RPi 3/4)
-# Add to /boot/config.txt or /boot/firmware/config.txt:
-dtoverlay=disable-bt
-
-# Disable Bluetooth service
-sudo systemctl disable hciuart
-sudo reboot
-```
-
-**STM32 not detected:**
-```bash
-# Check ST-Link connection
-st-info --probe
-
-# Try re-flashing
-cd stm32_uart_test
-make erase
-make flash
-```
-
-**Loopback test (RPi only):**
-```bash
-# Connect TX to RX on RPi
-stty -F /dev/serial0 115200
-echo "test" > /dev/serial0 &
-cat /dev/serial0
-```
-
-## Project Structure
-
-```
-uart_rpi_stm_test/
-├── .gitignore                   # Git ignore file
-├── README.md                    # This file
-├── rpi_uart_test.py             # Raspberry Pi test script
-├── stm32_uart_test.c            # STM32 C version (reference)
-├── stm32_uart_test.cpp          # STM32 C++ version (reference)
-├── Makefile                     # Makefile (reference)
-└── stm32_uart_test/             # Complete STM32 project (ready to build)
-    ├── Makefile                 # Build configuration
-    ├── STM32H7A3ZITXQ_FLASH.ld  # Linker script
-    ├── main.cpp                 # Standalone main (copy)
-    ├── Core/
-    │   ├── Inc/                 # Header files
-    │   └── Src/
-    │       ├── main.cpp         # Main application (C++ with UARTComm class)
-    │       ├── system_stm32h7xx.c
-    │       ├── stm32h7xx_it.c   # Interrupt handlers
-    │       ├── stm32h7xx_hal_msp.c
-    │       └── syscalls.c       # System calls
-    └── Drivers/                 # STM32 HAL and CMSIS
-        ├── STM32H7xx_HAL_Driver/
-        └── CMSIS/
-```
-
-## Build Commands (STM32)
-
-```bash
-cd stm32_uart_test
-
-# Build project
-make clean       # Clean build artifacts
-make -j4         # Compile (parallel build)
-
-# Flash to board
-make probe       # Check ST-Link connection
-make flash       # Flash binary to STM32
-make erase       # Erase flash memory
-
-# Output files in build/
-# - stm32_uart_test.bin  (flash this)
-# - stm32_uart_test.elf  (debug symbols)
-# - stm32_uart_test.hex  (Intel HEX)
 ```
 
 ## Technical Details
 
-### UART Configuration
+- **STM32 Project:** Generated with STM32CubeMX, build with STM32CubeIDE
 - **Baud Rate:** 115200
-- **Data Bits:** 8
-- **Parity:** None
-- **Stop Bits:** 1
-- **Flow Control:** None
-
-### STM32 Features
-- C++ implementation with `UARTComm` class
-- Interrupt-driven receive (HAL_UART_Receive_IT)
-- Automatic acknowledgment of received messages
-- Periodic heartbeat transmission (every 2 seconds)
-- Variadic message formatting support
-
-### RPi Features
-- Python 3 with pyserial
-- Sends numbered messages every second
-- Displays all received data
-- Clean error handling and exit
-
-## Files Description
-
-- **rpi_uart_test.py**: Python script for RPi UART communication
-- **stm32_uart_test/Core/Src/main.cpp**: C++ application with UARTComm class
-- **stm32_uart_test/Makefile**: Build configuration for arm-none-eabi-gcc
-- **stm32_uart_test/BUILD_README.md**: Detailed build instructions
-
-## License
-
-This is a test/example project for educational purposes.
-
-## License
-
-This is a test/example project for educational purposes.
+- **STM32 UART:** USART2 (PA2=TX, PA3=RX)
+- **RPi UART:** GPIO 14=TX, GPIO 15=RX (/dev/serial0)
+- **Data:** 8 bits, no parity, 1 stop bit
