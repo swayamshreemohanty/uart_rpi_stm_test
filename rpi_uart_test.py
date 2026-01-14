@@ -27,13 +27,24 @@ def main():
         )
         
         print(f"UART opened on {SERIAL_PORT} at {BAUD_RATE} baud")
-        print("Listening for incoming UART data from STM32...")
+        print("Bidirectional UART communication with STM32...")
         print("Press Ctrl+C to exit")
         print("-" * 50)
         
-     
+        send_counter = 0
+        last_send_time = time.time()
+        send_interval = 2  # Send every 2 seconds
         
         while True:
+            # Send data to STM32 every 2 seconds
+            current_time = time.time()
+            if current_time - last_send_time >= send_interval:
+                message = f"RPi->STM32: Message {send_counter}\n"
+                ser.write(message.encode('utf-8'))
+                print(f"[Outgoing DATA] {message.strip()}")
+                send_counter += 1
+                last_send_time = current_time
+            
             # Listen for data from STM32
             if ser.in_waiting > 0:
                 received = ser.readline().decode('utf-8', errors='ignore').strip()
