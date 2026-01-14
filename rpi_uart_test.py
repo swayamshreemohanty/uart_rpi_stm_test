@@ -31,16 +31,14 @@ def main():
         print("Press Ctrl+C to exit")
         print("-" * 50)
         
-        message_count = 0
+     
         
         while True:
             # Listen for data from STM32
             if ser.in_waiting > 0:
                 received = ser.readline().decode('utf-8', errors='ignore').strip()
                 if received:
-                    message_count += 1
-                    timestamp = time.strftime("%H:%M:%S")
-                    print(f"[{timestamp}] #{message_count}: {received}")
+                    print(f"[Incoming DATA] {received}")
             else:
                 # Small delay to prevent CPU spinning when no data
                 time.sleep(0.01)
