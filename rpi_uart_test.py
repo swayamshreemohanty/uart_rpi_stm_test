@@ -27,28 +27,23 @@ def main():
         )
         
         print(f"UART opened on {SERIAL_PORT} at {BAUD_RATE} baud")
+        print("Listening for incoming UART data from STM32...")
         print("Press Ctrl+C to exit")
         print("-" * 50)
         
-        counter = 0
+        message_count = 0
         
         while True:
-            # Send data to STM32
-            message = f"RPi->STM32: {counter}\n"
-            ser.write(message.encode('utf-8'))
-            print(f"Sent: {message.strip()}")
-            
-            # Wait for response from STM32
-            time.sleep(0.1)
-            
-            # Receive data from STM32
+            # Listen for data from STM32
             if ser.in_waiting > 0:
                 received = ser.readline().decode('utf-8', errors='ignore').strip()
                 if received:
-                    print(f"Received: {received}")
-            
-            counter += 1
-            time.sleep(1)  # Send every second
+                    message_count += 1
+                    timestamp = time.strftime("%H:%M:%S")
+                    print(f"[{timestamp}] #{message_count}: {received}")
+            else:
+                # Small delay to prevent CPU spinning when no data
+                time.sleep(0.01)
             
     except serial.SerialException as e:
         print(f"Serial port error: {e}")
