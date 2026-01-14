@@ -52,6 +52,7 @@ uint32_t counter = 0;
 char uart_buffer[50];
 char rx_buffer[100];
 uint8_t rx_byte;
+uint16_t rx_index = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -145,6 +146,18 @@ int main(void)
     {
       /* Data received - toggle YELLOW LED */
       BSP_LED_Toggle(LED_YELLOW);
+      
+      /* Store byte in buffer */
+      if (rx_byte == '\n' || rx_index >= 99)
+      {
+        rx_buffer[rx_index] = '\0';
+        printf("[UART RX] %s\r\n", rx_buffer);
+        rx_index = 0;
+      }
+      else if (rx_byte != '\r')
+      {
+        rx_buffer[rx_index++] = rx_byte;
+      }
       
       /* Echo the received byte back */
       HAL_UART_Transmit(&huart2, &rx_byte, 1, HAL_MAX_DELAY);
