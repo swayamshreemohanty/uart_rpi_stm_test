@@ -141,6 +141,10 @@ int main(void)
     /* Send counter via USART2 every second */
     sprintf(uart_buffer, "Counter: %lu\r\n", counter);
     HAL_UART_Transmit(&huart2, (uint8_t*)uart_buffer, strlen(uart_buffer), HAL_MAX_DELAY);
+    
+    /* Toggle LED to indicate transmission */
+    BSP_LED_Toggle(LED_GREEN);
+    
     counter++;
     HAL_Delay(1000);
 
